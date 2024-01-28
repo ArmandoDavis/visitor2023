@@ -4,9 +4,11 @@ class DatabaseServices {
   final String? uid;
   DatabaseServices({this.uid});
 
-  //referencing to our collection
+  // Referencing to our collection
   final CollectionReference userCollection =
       FirebaseFirestore.instance.collection("staffs");
+  final CollectionReference departmentMembersCollection =
+      FirebaseFirestore.instance.collection("departmentMembers");
 
   Future savingUserData(String fullName, String email) async {
     return await userCollection
@@ -14,58 +16,46 @@ class DatabaseServices {
         .set({"fullName": fullName, "email": email, "uid": uid});
   }
 
-  //Getting Staff Data
   Future gettingUserData(String email) async {
     QuerySnapshot snapshot =
         await userCollection.where("email", isEqualTo: email).get();
     return snapshot;
   }
 
-  //creating department data
+  // Creating department data
   Future createDepartmentDetails(
       Map<String, dynamic> departmentInfoMap, String id) async {
     return await FirebaseFirestore.instance
-        .collection("department")
+        .collection("departments") // Change to "departments"
         .doc(id)
         .set(departmentInfoMap);
   }
 
-  //Getting department data
+  // Getting department data
   Stream<QuerySnapshot> getDepartmentDetails() {
-    return FirebaseFirestore.instance.collection("department").snapshots();
+    return FirebaseFirestore.instance.collection("departments").snapshots();
   }
 
-  //Creating staff data
+  // Creating staff data
   Future addStaffToDepartment(Map<String, dynamic> staffInfoMap) async {
-    return await FirebaseFirestore.instance
-        .collection("department")
-        .doc(staffInfoMap["DepartmentId"])
-        .collection("staff")
-        .doc(staffInfoMap["Id"])
-        .set(staffInfoMap);
+    return await departmentMembersCollection.doc(staffInfoMap["id"]).set(staffInfoMap);
   }
 
-  //Getting staff details from each department
+  // Getting staff details from each department
   Stream<QuerySnapshot> getStaffDetailsForDepartment(String departmentId) {
-    return FirebaseFirestore.instance
-        .collection("department")
-        .doc(departmentId)
-        .collection("staff")
+    return departmentMembersCollection
+        .where("DepartmentId", isEqualTo: departmentId)
         .snapshots();
   }
 
-  // New method to get the count of staff members in a department
   Future<int> getStaffCountForDepartment(String departmentId) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection("department")
-        .doc(departmentId)
-        .collection("staff")
+    QuerySnapshot snapshot = await departmentMembersCollection
+        .where("DepartmentId", isEqualTo: departmentId)
         .get();
 
     return snapshot.size;
   }
 
-  //creating visitors data
   Future addVisitorsDetails(Map<String, dynamic> visitorsInfoMap) async {
     return await FirebaseFirestore.instance
         .collection("visitors")
@@ -73,30 +63,20 @@ class DatabaseServices {
         .set(visitorsInfoMap);
   }
 
-  //Fetching the list of departments
-  // Future<List<String>> getDepartmentList() async {
-  //   QuerySnapshot snapshot =
-  //       await FirebaseFirestore.instance.collection("department").get();
-  //   List<String> departmentList = [];
-  //   snapshot.docs.forEach((doc) {
-  //     departmentList.add(doc["Name"]);
-  //   });
-  //   return departmentList;
-  // }
   Stream<List<String>> getDepartmentListStream() {
-    return FirebaseFirestore.instance.collection("department").snapshots().map(
-      (snapshot) {
-        return snapshot.docs.map((doc) => doc["Name"].toString()).toList();
-      },
-    );
+    return FirebaseFirestore.instance
+        .collection("departments")
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => doc["Name"].toString()).toList();
+    });
   }
 
-  //Fetching the list of staff in a particular department
-
   Stream<List<String>> getStaffListStreamForDepartment(String departmentId) {
-  return DatabaseServices()
-      .getStaffDetailsForDepartment(departmentId)
-      .map((snapshot) => snapshot.docs.map((doc) => doc['Name'].toString()).toList());
-}
-
+    return departmentMembersCollection
+        .where("DepartmentId", isEqualTo: departmentId)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => doc['Name'].toString()).toList());
+  }
 }

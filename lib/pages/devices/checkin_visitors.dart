@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -30,6 +32,7 @@ class _CheckInVisitorsState extends State<CheckInVisitors> {
 
   bool showMoreFields = false;
   bool isSwitched = false;
+  bool _isLoading = false;
 
   DateTime startDate = DateTime.now();
   DateTime endDate = DateTime.now().add(Duration());
@@ -332,37 +335,19 @@ class _CheckInVisitorsState extends State<CheckInVisitors> {
                 child: Padding(
                   padding:
                       EdgeInsets.only(bottom: Dimensions.height20(context)),
-                  child: GestureDetector(
-                    onTap: () async {
-                      // Validate each input field
-                      if (_formKey.currentState?.validate() ?? false) {
-                        // All fields are valid, proceed to save data
-
-                        // Save visitor data to Firestore
-                        String visitorId = randomAlphaNumeric(10);
-                        Map<String, dynamic> visitorInfoMap = {
-                          "FullName": fullNameController.text,
-                          "Email": emailController.text,
-                          "Mobile": mobileController.text,
-                          "Department": selectedBranch!,
-                          "Host": selectedHost!,
-                          "Purpose": purposeController.text,
-                          "VisitorId": visitorId,
-                        };
-
-                        await DatabaseServices(uid: visitorId)
-                            .addVisitorsDetails(visitorInfoMap);
-                      }
-                    },
-                    child: Container(
-                      //  margin: EdgeInsets.only(left: 200),
-                      alignment: Alignment.center,
-                      height: Dimensions.height40(context),
-                      width: Dimensions.width150(context),
-                      decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(
-                              Dimensions.radius8(context))),
+                  child: Container(
+                    //  margin: EdgeInsets.only(left: 200),
+                    alignment: Alignment.center,
+                    height: Dimensions.height40(context),
+                    width: Dimensions.width150(context),
+                    decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(
+                            Dimensions.radius8(context))),
+                    child: ElevatedButton(
+                      onPressed: () async{
+                        addVisitor();
+                      },
                       child: BigText(
                         text: "ADD NEW",
                         color: Colors.white,
@@ -657,4 +642,57 @@ class _CheckInVisitorsState extends State<CheckInVisitors> {
       ],
     );
   }
+
+ Future<void> addVisitor() async {
+    if (_formKey.currentState!.validate()) {
+      // All fields are valid, proceed to save data
+      setState(() {
+        _isLoading = true;
+      });
+      // Save visitor data to Firestore
+      try {
+         String visitorId = randomAlphaNumeric(10);
+      Map<String, dynamic> visitorInfoMap = {
+        "FullName": fullNameController.text,
+        "Email": emailController.text,
+        "Mobile": mobileController.text,
+        "Department": selectedBranch!,
+        "Host": selectedHost!,
+        "Purpose": purposeController.text,
+        "VisitorId": visitorId,
+      };
+      await DatabaseServices(uid: visitorId).addVisitorsDetails(visitorInfoMap);
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Success'),
+            content: Text('Visitor data has been saved successfully.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  nextScreenReplace(context, HomePage());
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );      
+      } catch (error) {
+         print("Error saving visitor data: $error");
+      
+      }finally{
+          // Regardless of success or failure, set loading state to false
+      setState(() {
+        _isLoading = false;
+      });
+    
+      }
+     
+
+    }
+  }
+
 }
